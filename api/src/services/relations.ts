@@ -1,17 +1,17 @@
-import { Knex } from 'knex';
-import { systemRelationRows } from '../database/system-data/relations';
-import { ForbiddenException, InvalidPayloadException } from '../exceptions';
-import { AbstractServiceOptions, SchemaOverview, Query, Relation, RelationMeta } from '../types';
+import SchemaInspector from '@directus/schema';
 import { Accountability } from '@directus/shared/types';
 import { toArray } from '@directus/shared/utils';
+import Keyv from 'keyv';
+import { Knex } from 'knex';
+import { ForeignKey } from 'knex-schema-inspector/dist/types/foreign-key';
+import { getCache } from '../cache';
+import getDatabase, { getSchemaInspector } from '../database';
+import { systemRelationRows } from '../database/system-data/relations';
+import { ForbiddenException, InvalidPayloadException } from '../exceptions';
+import { AbstractServiceOptions, Query, Relation, RelationMeta, SchemaOverview } from '../types';
+import { getDefaultIndexName } from '../utils/get-default-index-name';
 import { ItemsService, QueryOptions } from './items';
 import { PermissionsService } from './permissions';
-import SchemaInspector from '@directus/schema';
-import { ForeignKey } from 'knex-schema-inspector/dist/types/foreign-key';
-import getDatabase, { getSchemaInspector } from '../database';
-import { getDefaultIndexName } from '../utils/get-default-index-name';
-import { getCache } from '../cache';
-import Keyv from 'keyv';
 
 export class RelationsService {
 	knex: Knex;
@@ -226,31 +226,31 @@ export class RelationsService {
 		}
 
 		await this.knex.transaction(async (trx) => {
-			if (existingRelation.related_collection) {
-				await trx.schema.alterTable(collection, async (table) => {
-					let constraintName: string = getDefaultIndexName('foreign', collection, field);
+			// if (existingRelation.related_collection) {
+			// 	await trx.schema.alterTable(collection, async (table) => {
+			// 		let constraintName: string = getDefaultIndexName('foreign', collection, field);
 
-					// If the FK already exists in the DB, drop it first
-					if (existingRelation?.schema) {
-						constraintName = existingRelation.schema.constraint_name || constraintName;
-						table.dropForeign(field, constraintName);
-					}
+			// 		// If the FK already exists in the DB, drop it first
+			// 		if (existingRelation?.schema) {
+			// 			constraintName = existingRelation.schema.constraint_name || constraintName;
+			// 			table.dropForeign(field, constraintName);
+			// 		}
 
-					this.alterType(table, relation);
+			// 		this.alterType(table, relation);
 
-					const builder = table
-						.foreign(field, constraintName || undefined)
-						.references(
-							`${existingRelation.related_collection!}.${
-								this.schema.collections[existingRelation.related_collection!].primary
-							}`
-						);
+			// 		const builder = table
+			// 			.foreign(field, constraintName || undefined)
+			// 			.references(
+			// 				`${existingRelation.related_collection!}.${
+			// 					this.schema.collections[existingRelation.related_collection!].primary
+			// 				}`
+			// 			);
 
-					if (relation.schema?.on_delete) {
-						builder.onDelete(relation.schema.on_delete);
-					}
-				});
-			}
+			// 		if (relation.schema?.on_delete) {
+			// 			builder.onDelete(relation.schema.on_delete);
+			// 		}
+			// 	});
+			// }
 
 			const relationsItemService = new ItemsService('directus_relations', {
 				knex: trx,
